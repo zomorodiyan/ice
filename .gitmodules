@@ -1,6 +1,0 @@
-[submodule "external/gtest"]
-	path = external/gtest
-	url = https://github.com/google/googletest
-[submodule "external/matplotlibcpp"]
-	path = external/matplotlibcpp
-	url = https://github.com/lava/matplotlib-cpp.git
