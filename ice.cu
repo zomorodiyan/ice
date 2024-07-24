@@ -93,6 +93,7 @@ __global__ void get_theta(float* f_x, float* f_y, float* theta, int nx, int ny) 
 __global__ void get_eps(float* theta, float* eps, float* eps_prime, int nx, int ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
     if (idx < nx && idy < ny) {
         int id = idy * nx + idx;
 
@@ -112,8 +113,8 @@ __global__ void phase_field(curandState* state, float* eps, float* eps_prime, fl
         int top = ((idy - 1 + ny) % ny) * nx + idx;
         int bottom = ((idy + 1) % ny) * nx + idx;
 
-        float part1 = (eps[id] * eps_prime[id] * p_y[right] - eps[id] * eps_prime[id] * p_y[left]) / (2.0 * dx);
-        float part2 = (eps[id] * eps_prime[id] * p_x[bottom] - eps[id] * eps_prime[id] * p_x[top]) / (2.0 * dy);
+        float part1 = (eps[right] * eps_prime[right] * p_y[right] - eps[left] * eps_prime[left] * p_y[left]) / (2.0 * dx);
+        float part2 = (eps[bottom] * eps_prime[bottom] * p_x[bottom] - eps[top] * eps_prime[top] * p_x[top]) / (2.0 * dy);
         float part3 = eps2_x[id] * p_x[id] + eps2_y[id] * p_y[id];
         float part4 = eps[id] * eps[id] * p_lap[id];
 
@@ -132,21 +133,13 @@ __global__ void phase_field(curandState* state, float* eps, float* eps_prime, fl
     }
 }
 
-__global__ void T_field(float* T, float* d_eta, float* T_new, float hx, float hy, int nx, int ny) {
+__global__ void T_field(float* T, float* p_dif, float* T_lap, int nx, int ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
     if (idx < nx && idy < ny) {
         int id = idy * nx + idx;
-
-        int left = idy * nx + ((idx - 1 + nx) % nx);
-        int right = idy * nx + ((idx + 1) % nx);
-        int top = ((idy - 1 + ny) % ny) * nx + idx;
-        int bottom = ((idy + 1) % ny) * nx + idx;
-
-        float lap = (T[top] + T[bottom] - 2.0 * T[id]) / (hx * hx) + 
-                    (T[left] + T[right] - 2.0 * T[id]) / (hy * hy);
-
-        T_new[id] = T[id] + dt * lap + K * d_eta[id];
+        T[id] = T[id] + dt*T_lap[id] + K*p_dif[id];
     }
 }
 
@@ -203,7 +196,7 @@ int main() {
 
     // Initialize arrays
     float *T, *p, *theta, *p_x, *p_y, *eps, *eps_prime, *eps2_x, *eps2_y;
-    float *d_T, *d_p, *d_theta, *d_p_x, *d_p_y, *d_p_dif, *d_p_lap, *d_eps, *d_eps2, *d_eps_prime, *d_eps2_x, *d_eps2_y;
+    float *d_T, *d_T_lap, *d_p, *d_theta, *d_p_x, *d_p_y, *d_p_dif, *d_p_lap, *d_eps, *d_eps2, *d_eps_prime, *d_eps2_x, *d_eps2_y;
     curandState* d_state;
 
     T = (float*)calloc(nx * ny, sizeof(float));
@@ -233,6 +226,7 @@ int main() {
     }
 
     cudaMalloc((void**)&d_T, nx * ny * sizeof(float));
+    cudaMalloc((void**)&d_T_lap, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_dif, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_lap, nx * ny * sizeof(float));
@@ -286,14 +280,18 @@ int main() {
         cudaDeviceSynchronize();
 
         phase_field<<<numBlocks, threadsPerBlock>>>(d_state, d_eps, d_eps_prime, d_eps2_x, d_eps2_y, d_p, d_p_x, d_p_y, d_p_lap, d_p_dif, d_T, hx, hy, nx, ny);
-
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
+
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_p, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
-        T_field<<<numBlocks, threadsPerBlock>>>(d_T, d_p, d_T, hx, hy, nx, ny);
+        laplace<<<numBlocks, threadsPerBlock>>>(d_T, d_T_lap, hx, hy, nx, ny);
+        CUDA_CHECK_ERROR();
+        cudaDeviceSynchronize();
+
+        T_field<<<numBlocks, threadsPerBlock>>>(d_T, d_p_dif, d_T_lap, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
