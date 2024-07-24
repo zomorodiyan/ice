@@ -8,6 +8,7 @@ if [ $? -eq 0 ]; then
     echo "Compilation successful. Running the program..."
     # Run the compiled CUDA program
     ./cu
+    echo "Execution successful. Plotting the results..."
     python plot.py
 else
     echo "Compilation failed."

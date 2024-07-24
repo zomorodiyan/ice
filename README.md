@@ -5,12 +5,9 @@ Step 18 (Speical Topic 2): Phase-field Method
 This code is the tutorial's code converted from Python (Jax) to c++ (CUDA).
 The tutorial's code reproduce the results presented in *Modeling and numerical simulations of dendritic crystal growth* by Ryo Kobayashi 
 
-linux command to run:
-
+run run.sh in terminal:
 ```sh
-python ice.py
-
-nvcc ice.cu -o cu
+nvcc -arch=compute_75 -code=sm_75 ice.cu -o cu
 ./cu
 python plot.py
 ```
