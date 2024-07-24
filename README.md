@@ -10,6 +10,7 @@ run run.sh in terminal:
 nvcc -arch=compute_75 -code=sm_75 ice.cu -o cu
 ./cu
 python plot.py
+python plot_trio.py
 ```
 
 ## Figure 8
