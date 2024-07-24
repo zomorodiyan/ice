@@ -203,12 +203,13 @@ int main() {
     float t = 0.0;
 
     // Initialize arrays
-    float *T, *p, *theta, *p_x, *p_y, *eps, *eps_prime, *eps2_x, *eps2_y;
-    float *d_T, *d_p, *d_theta, *d_p_x, *d_p_y, *d_eps, *d_eps_prime, *d_eps2_x, *d_eps2_y;
+    float *T, *p, *theta, *p_x, *p_y, *p_lap, *eps, *eps_prime, *eps2_x, *eps2_y;
+    float *d_T, *d_p, *d_theta, *d_p_x, *d_p_y, *d_p_lap, *d_eps, *d_eps_prime, *d_eps2_x, *d_eps2_y;
     curandState* d_state;
 
     T = (float*)calloc(nx * ny, sizeof(float));
     p = (float*)calloc(nx * ny, sizeof(float));
+    p_lap = (float*)calloc(nx * ny, sizeof(float));
     theta = (float*)calloc(nx * ny, sizeof(float));
     p_x = (float*)calloc(nx * ny, sizeof(float));
     p_y = (float*)calloc(nx * ny, sizeof(float));
@@ -233,14 +234,9 @@ int main() {
         }
     }
 
-    /*
-    char filename_[100];
-    sprintf(filename_, "ice/output_%d.txt", 0);
-    saveArray(filename_, p, nx, ny);
-    */
-
     cudaMalloc((void**)&d_T, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p, nx * ny * sizeof(float));
+    cudaMalloc((void**)&d_p_lap, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_theta, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_x, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_y, nx * ny * sizeof(float));
@@ -266,6 +262,10 @@ int main() {
 
     for (int i = 0; i < nIter; ++i) {
         grad<<<numBlocks, threadsPerBlock>>>(d_p, d_p_x, d_p_y, hx, hy, nx, ny);
+        CUDA_CHECK_ERROR();
+        cudaDeviceSynchronize();
+
+        laplace<<<numBlocks, threadsPerBlock>>>(d_p, d_p_lap, hx, hy, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
@@ -296,11 +296,11 @@ int main() {
         if (i % 200 == 0) {
             std::cout << "i: " << i << "\n";
 
-            cudaMemcpy(p_x, d_p_x, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(p_lap, d_p_lap, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
 
             char filename[100];
             sprintf(filename, "ice/output_%d.txt", i);
-            saveArray(filename, p_x, nx, ny);
+            saveArray(filename, p_lap, nx, ny);
         }
 
         t += dt;
