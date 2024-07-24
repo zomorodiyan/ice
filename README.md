@@ -13,6 +13,24 @@ python plot.py
 python plot_trio.py
 ```
 
+## Figure 7
+
+### delta = 0.000
+![Figure 7: delta = 0.000](figures/fig7_delta_0.000.png)
+
+### delta = 0.005
+![Figure 7: delta = 0.005](figures/fig7_delta_0.005.png)
+
+### delta = 0.010
+![Figure 7: delta = 0.010](figures/fig7_delta_0.010.png)
+
+### delta = 0.020
+![Figure 7: delta = 0.020](figures/fig7_delta_0.020.png)
+
+### delta = 0.050
+![Figure 7: delta = 0.050](figures/fig7_delta_0.050.png)
+
+
 ## Figure 8
 
 ### K = 0.8
