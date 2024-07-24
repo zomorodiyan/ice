@@ -5,7 +5,7 @@
 #include <math.h>
 
 #define J 6
-#define K 1.6
+#define K 1.8
 #define T_eq 1.0
 #define a 0.01
 #define alpha 0.9
@@ -256,47 +256,36 @@ int main() {
 
     for (int i = 0; i < nIter; ++i) {
         grad<<<numBlocks, threadsPerBlock>>>(d_p, d_p_x, d_p_y, hx, hy, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         laplace<<<numBlocks, threadsPerBlock>>>(d_p, d_p_lap, hx, hy, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         get_theta<<<numBlocks, threadsPerBlock>>>(d_p_x, d_p_y, d_theta, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         get_eps<<<numBlocks, threadsPerBlock>>>(d_theta, d_eps, d_eps_prime, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         elementwise_multiply<<<numBlocks, threadsPerBlock>>>(d_eps, d_eps, d_eps2, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         grad<<<numBlocks, threadsPerBlock>>>(d_eps2, d_eps2_x, d_eps2_y, hx, hy, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         phase_field<<<numBlocks, threadsPerBlock>>>(d_state, d_eps, d_eps_prime, d_eps2_x, d_eps2_y, d_p, d_p_x, d_p_y, d_p_lap, d_p_dif, d_T, hx, hy, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_p, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         laplace<<<numBlocks, threadsPerBlock>>>(d_T, d_T_lap, hx, hy, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         T_field<<<numBlocks, threadsPerBlock>>>(d_T, d_p_dif, d_T_lap, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_T, nx, ny);
-        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         if (i % 200 == 0) {
