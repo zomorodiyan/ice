@@ -14,7 +14,8 @@ python plot_trio.py
 ```
 
 ## Figure 7
-
+After nucleation, crystal grows toward supercooled melt under adiabatic condition for various values of 6. There is
+4-mode anisotropy. K = 2.0. 
 ### delta = 0.000
 ![Figure 7: delta = 0.000](figures/fig7_delta_0.000.png)
 
@@ -32,7 +33,8 @@ python plot_trio.py
 
 
 ## Figure 8
-
+After nucleation, crystal grows toward supercooled melt under adiabatic condition for various values of K. There is
+6-mode anisotropy. 6 = 0.040. 
 ### K = 0.8
 ![Figure 8: K = 0.8](figures/fig8_K_0.8.png)
 
