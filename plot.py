@@ -8,7 +8,7 @@ def read_array(filename, nx, ny):
     return data.reshape((ny, nx))
 def plot_data(case_path, nx, ny):
     for i in range(200, nIter + 1, 200):
-        filename = os.path.join(case_path, f"ice/output_{i}.txt")
+        filename = os.path.join(case_path, f"output_{i}.txt")
         data = read_array(filename, nx, ny)
         plt.figure(figsize=(10, 8))
         plt.imshow(data, cmap='viridis')
