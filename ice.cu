@@ -17,7 +17,7 @@
 #define tau 0.0003
 #define nIter int(t_OFF/dt)+1
 
-const int nx = 300; // Use const or constexpr to ensure they are properly handled
+const int nx = 300; 
 const int ny = 300;
 const float hx = 0.03f;
 const float hy = 0.03f;

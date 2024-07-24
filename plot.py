@@ -24,7 +24,7 @@ def plot_data(case_path, nx, ny):
 case_name = 'ice'
 work_path = os.getcwd()
 case_path = os.path.join(work_path, case_name)
-nx, ny = 300, 300  # Update this to match the nx and ny used in the CUDA code
+nx, ny = 300, 300  # this should match the nx and ny used in the CUDA code
 nIter = int(0.36 / 0.0001)
 
 plot_data(case_path, nx, ny)
