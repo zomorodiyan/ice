@@ -1,9 +1,18 @@
-# orange
-an attempt to use CMake for C++ programming from simple to complicated usage.
-configure and build with cmake using cmake-gui or use comman line
+# ice 
+Step 18 (Speical Topic 2): Phase-field Method
+[drzgan.github/CFD/Phase-field Method](https://drzgan.github.io/Python_CFD/Konayashi_1993-main/jax_version/kobayashi_aniso_jax_ZGAN-2.html)
 
-linux command line ez mode
+This code is the tutorial's code converted from Python (Jax) to c++ (CUDA).
+The tutorial's code reproduce the results presented in *Modeling and numerical simulations of dendritic crystal growth* by Ryo Kobayashi 
 
-    ./configure.sh
-    ./build.sh  
-    ./run.sh
+linux command to run:
+
+```sh
+python ice.py
+
+nvcc ice.cu -o cu
+./cu
+python plot.py
+```
+
+
