@@ -101,7 +101,7 @@ __global__ void get_eps(float* theta, float* eps, float* eps_prime, int nx, int 
     }
 }
 
-__global__ void phase_field(curandState* state, float* eps, float* eps_prime, float* eps2_x, float* eps2_y, float* p, float* p_x, float* p_y, float* p_lap, float* p_dif, float* T, float dx, float dy, int nx, int ny) {
+__global__ void phase_field(curandState* state, float* eps, float* eps_prime, float* eps2_x, float* eps2_y, float* p, float* p_x, float* p_y, float* p_lap, float* dif_p, float* T, float dx, float dy, int nx, int ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
     int id = idy * nx + idx;
@@ -126,9 +126,9 @@ __global__ void phase_field(curandState* state, float* eps, float* eps_prime, fl
         curandState localState = state[id];
         float noise = a * p[id] * (1 - p[id]) * (curand_uniform(&localState) - 0.5);
         
-        p_dif[id] = dt / tau * (term1 + term2 + noise);
+        dif_p[id] = dt / tau * (term1 + term2 + noise);
 
-        p[id] = p[id] + p_dif[id];
+        p[id] = p[id] + dif_p[id];
     }
 }
 
@@ -202,12 +202,13 @@ int main() {
     float t = 0.0;
 
     // Initialize arrays
-    float *T, *p, *theta, *p_x, *p_y, *eps, *eps_prime, *eps2_x, *eps2_y;
-    float *d_T, *d_p, *d_theta, *d_p_x, *d_p_y, *d_p_dif, *d_p_lap, *d_eps, *d_eps2, *d_eps_prime, *d_eps2_x, *d_eps2_y;
+    float *T, *p, *theta, *p_x, *p_y, *p_lap, *eps, *eps_prime, *eps2_x, *eps2_y;
+    float *d_T, *d_p, *d_theta, *d_p_x, *d_p_y, *d_p_lap, *d_dif_p, *d_eps, *d_eps_prime, *d_eps2, *d_eps2_x, *d_eps2_y;
     curandState* d_state;
 
     T = (float*)calloc(nx * ny, sizeof(float));
     p = (float*)calloc(nx * ny, sizeof(float));
+    p_lap = (float*)calloc(nx * ny, sizeof(float));
     theta = (float*)calloc(nx * ny, sizeof(float));
     p_x = (float*)calloc(nx * ny, sizeof(float));
     p_y = (float*)calloc(nx * ny, sizeof(float));
@@ -234,14 +235,13 @@ int main() {
 
     cudaMalloc((void**)&d_T, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p, nx * ny * sizeof(float));
-    cudaMalloc((void**)&d_p_dif, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_lap, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_theta, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_x, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p_y, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_eps, nx * ny * sizeof(float));
-    cudaMalloc((void**)&d_eps2, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_eps_prime, nx * ny * sizeof(float));
+    cudaMalloc((void**)&d_eps2, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_eps2_x, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_eps2_y, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_state, nx * ny * sizeof(curandState));
@@ -285,30 +285,40 @@ int main() {
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
-        phase_field<<<numBlocks, threadsPerBlock>>>(d_state, d_eps, d_eps_prime, d_eps2_x, d_eps2_y, d_p, d_p_x, d_p_y, d_p_lap, d_p_dif, d_T, hx, hy, nx, ny);
+        std::cout << "before phase_field\n";
 
+        phase_field<<<numBlocks, threadsPerBlock>>>(d_state, d_eps, d_eps_prime, d_eps2_x, d_eps2_y, d_p, d_p_x, d_p_y, d_p_lap, d_dif_p, d_T, hx, hy, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
+
+
+        std::cout << "after phase_field\n";
+
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_p, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
+
+        std::cout << "after zero flux bx p\n";
 
         T_field<<<numBlocks, threadsPerBlock>>>(d_T, d_p, d_T, hx, hy, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
+        std::cout << "after t_field update\n";
+
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_T, nx, ny);
         CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
+        std::cout << "after zero flux bx T\n";
 
         if (i % 200 == 0) {
             std::cout << "i: " << i << "\n";
 
-            cudaMemcpy(p, d_p, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(p_lap, d_p_lap, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
 
             char filename[100];
             sprintf(filename, "ice/output_%d.txt", i);
-            saveArray(filename, p, nx, ny);
+            saveArray(filename, p_lap, nx, ny);
         }
 
         t += dt;
