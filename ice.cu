@@ -5,7 +5,7 @@
 #include <math.h>
 
 #define J 6
-#define K 1.8
+#define K 2.0
 #define T_eq 1.0
 #define a 0.01
 #define alpha 0.9
@@ -13,9 +13,9 @@
 #define dt 0.0001
 #define eps_bar 0.01
 #define gamma 10.0
-#define t_OFF 0.36
+#define t_OFF 0.50
 #define tau 0.0003
-#define nIter int(t_OFF/dt)
+#define nIter int(t_OFF/dt)+1
 
 const int nx = 300; // Use const or constexpr to ensure they are properly handled
 const int ny = 300;
@@ -247,14 +247,11 @@ int main() {
     dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x, 
                    (ny + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    std::cout << "Number of blocks in x: " << numBlocks.x << std::endl;
-    std::cout << "Number of blocks in y: " << numBlocks.y << std::endl;
-
     init_curand<<<numBlocks, threadsPerBlock>>>(d_state, time(0), nx, ny);
     CUDA_CHECK_ERROR();
     cudaDeviceSynchronize();
 
-    for (int i = 0; i < nIter; ++i) {
+    for (int i = 0; i <= nIter; ++i) {
         grad<<<numBlocks, threadsPerBlock>>>(d_p, d_p_x, d_p_y, hx, hy, nx, ny);
         cudaDeviceSynchronize();
 
@@ -288,9 +285,8 @@ int main() {
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_T, nx, ny);
         cudaDeviceSynchronize();
 
-        if (i % 200 == 0) {
-            std::cout << "i: " << i << "\n";
-
+        if (i % 800 == 0) {
+            std::cout << "step/"<<nIter<<": " << i << "\n";
             cudaMemcpy(p, d_p, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
 
             char filename[100];

@@ -10,6 +10,7 @@ if [ $? -eq 0 ]; then
     ./cu
     echo "Execution successful. Plotting the results..."
     python plot.py
+    python plot_trio.py
 else
     echo "Compilation failed."
 fi

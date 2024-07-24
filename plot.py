@@ -13,7 +13,7 @@ def plot_data(case_path, nx, ny):
         filename = os.path.join(case_path, f"output_{i}.txt")
         data = read_array(filename, nx, ny)
         plt.figure(figsize=(10, 8))
-        plt.imshow(data, cmap='viridis', extent=[0, 9, 0, 9], origin='lower', aspect='auto')
+        plt.imshow(data, cmap='coolwarm', extent=[0, 9, 0, 9], origin='lower', aspect='auto')
         plt.colorbar()
         plt.xlabel('x (distance)')
         plt.ylabel('y (distance)')
