@@ -7,7 +7,7 @@ def read_array(filename, nx, ny):
     data = np.loadtxt(filename)
     return data.reshape((ny, nx))
 def plot_data(case_path, nx, ny):
-    for i in range(200, nIter + 1, 200):
+    for i in range(0, nIter + 1, 200):
         filename = os.path.join(case_path, f"output_{i}.txt")
         data = read_array(filename, nx, ny)
         plt.figure(figsize=(10, 8))

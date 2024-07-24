@@ -22,6 +22,15 @@ const int ny = 300;
 const float hx = 0.03f;
 const float hy = 0.03f;
 
+// Error checking macro
+#define CUDA_CHECK_ERROR() {                                           \
+    cudaError_t err = cudaGetLastError();                              \
+    if (err != cudaSuccess) {                                          \
+        printf("CUDA Error: %s\n", cudaGetErrorString(err));           \
+        exit(-1);                                                      \
+    }                                                                  \
+}
+
 __global__ void init_curand(curandState* state, unsigned long seed, int nx, int ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -36,14 +45,23 @@ __global__ void grad(float* m, float* f_x, float* f_y, float dx, float dy, int n
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < nx && idy < ny) {
         int id = idy * nx + idx;
-
         int left = idy * nx + ((idx - 1 + nx) % nx);
         int right = idy * nx + ((idx + 1) % nx);
         int top = ((idy - 1 + ny) % ny) * nx + idx;
         int bottom = ((idy + 1) % ny) * nx + idx;
-
         f_x[id] = (m[right] - m[left]) / (2.0 * dx);
         f_y[id] = (m[bottom] - m[top]) / (2.0 * dy);
+
+        // Debug print statements
+        /*
+        if (idx == 0 && idy == 0) {  // Example: Print values at the center
+            printf("ID: %d, IDX: %d, IDY: %d\n", id, idx, idy);
+            printf("Left: %d (value: %f), Right: %d (value: %f)\n", left, m[left], right, m[right]);
+            printf("Top: %d (value: %f), Bottom: %d (value: %f)\n", top, m[top], bottom, m[bottom]);
+            printf("Current: %d (value: %f)\n", id, m[id]);
+            printf("Gradient f_x: %f, f_y: %f\n", f_x[id], f_y[id]);
+        }
+        */
     }
 }
 
@@ -215,6 +233,12 @@ int main() {
         }
     }
 
+    /*
+    char filename_[100];
+    sprintf(filename_, "ice/output_%d.txt", 0);
+    saveArray(filename_, p, nx, ny);
+    */
+
     cudaMalloc((void**)&d_T, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_p, nx * ny * sizeof(float));
     cudaMalloc((void**)&d_theta, nx * ny * sizeof(float));
@@ -233,38 +257,49 @@ int main() {
     dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x, 
                    (ny + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
+    std::cout << "Number of blocks in x: " << numBlocks.x << std::endl;
+    std::cout << "Number of blocks in y: " << numBlocks.y << std::endl;
+
     init_curand<<<numBlocks, threadsPerBlock>>>(d_state, time(0), nx, ny);
+    CUDA_CHECK_ERROR();
     cudaDeviceSynchronize();
 
     for (int i = 0; i < nIter; ++i) {
-        std::cout << "loop\n";
         grad<<<numBlocks, threadsPerBlock>>>(d_p, d_p_x, d_p_y, hx, hy, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         get_theta<<<numBlocks, threadsPerBlock>>>(d_p_x, d_p_y, d_theta, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         get_eps<<<numBlocks, threadsPerBlock>>>(d_theta, d_eps, d_eps_prime, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         phase_field<<<numBlocks, threadsPerBlock>>>(d_state, d_eps, d_eps_prime, d_p_x, d_p_y, d_p, d_T, d_p, hx, hy, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_p, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         T_field<<<numBlocks, threadsPerBlock>>>(d_T, d_p, d_T, hx, hy, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
         zero_flux_BC<<<numBlocks, threadsPerBlock>>>(d_T, nx, ny);
+        CUDA_CHECK_ERROR();
         cudaDeviceSynchronize();
 
-        if ((i + 1) % 200 == 0) {
-            cudaMemcpy(p_x, d_p, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
-            //cudaMemcpy(T, d_T, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
+        if (i % 200 == 0) {
+            std::cout << "i: " << i << "\n";
+
+            cudaMemcpy(p_x, d_p_x, nx * ny * sizeof(float), cudaMemcpyDeviceToHost);
 
             char filename[100];
-            sprintf(filename, "ice/output_%d.txt", i + 1);
+            sprintf(filename, "ice/output_%d.txt", i);
             saveArray(filename, p_x, nx, ny);
         }
 
@@ -295,4 +330,3 @@ int main() {
     std::cout << "t=" << t << std::endl;
     return 0;
 }
-
